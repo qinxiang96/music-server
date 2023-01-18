@@ -96,6 +96,18 @@
             <artifactId>elasticsearch-rest-high-level-client</artifactId>
             <version>7.14.1</version>
         </dependency>
+<!--        短信服务引入stringutils-->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+<!--        配置注解处理器，自定义短信服务的相关信息配置文件-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
