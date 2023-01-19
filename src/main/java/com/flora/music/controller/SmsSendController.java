@@ -2,6 +2,7 @@ package com.flora.music.controller;
 
 import com.flora.music.component.SmsComponent;
 import com.flora.music.exception.BizCodeEnum;
+import com.flora.music.utils.Consts;
 import com.flora.music.utils.R;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ public class SmsSendController {
     public R sendCode(HttpServletRequest request){
         String phone = request.getParameter("phone_num").trim();
         // 实现接口防刷
-        String redisCode = redisTemplate.opsForValue().get("sms_code_" + phone);
+        String redisCode = redisTemplate.opsForValue().get(Consts.SMS_CODE_CACHE_PREFIX + phone);
         if (!StringUtils.isEmpty(redisCode)) {
             Long redisCodeTime = Long.parseLong(redisCode.split("_")[1]);
             if (System.currentTimeMillis() - redisCodeTime < 60000) {
@@ -42,7 +43,7 @@ public class SmsSendController {
         // String code = UUID.randomUUID().toString().substring(0,6);
         String code = String.valueOf((int) (Math.random() * 900000 + 100000));
         // 验证码需要根据用户的提交进行校验，直接存在Redis
-        redisTemplate.opsForValue().set("sms_code_"+phone,code+"_"+System.currentTimeMillis(),10, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set(Consts.SMS_CODE_CACHE_PREFIX+phone,code+"_"+System.currentTimeMillis(),10, TimeUnit.MINUTES);
 
 
         smsComponent.sendSmsCode(phone,code);

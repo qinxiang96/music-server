@@ -48,7 +48,7 @@ public interface ConsumerService {
      * @param username
      * @return
      */
-    public List<Consumer> selectByUsername(String username);
+    public Consumer selectByUsername(String username);
 
     /**
      * 验证密码

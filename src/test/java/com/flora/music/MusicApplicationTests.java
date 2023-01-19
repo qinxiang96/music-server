@@ -21,6 +21,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -115,6 +116,13 @@ class MusicApplicationTests {
     void sendMs(){
         smsComponent.sendSmsCode("15545334996","282531");
 
+    }
+    // 测试加密
+    @Test
+    void md(){
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        System.out.println(passwordEncoder.encode("zige"));
+        System.out.println(passwordEncoder.encode("xiaopengyou"));
     }
 
 }

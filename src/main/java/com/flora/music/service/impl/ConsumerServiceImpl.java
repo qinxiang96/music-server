@@ -78,7 +78,7 @@ public class ConsumerServiceImpl implements ConsumerService {
      * @return
      */
     @Override
-    public List<Consumer> selectByUsername(String username) {
+    public Consumer selectByUsername(String username) {
         return consumerMapper.selectByUsername(username);
     }
 

@@ -7,9 +7,11 @@ import com.flora.music.service.ConsumerService;
 import com.flora.music.utils.Consts;
 import com.flora.music.utils.R;
 import com.flora.music.vo.ConsumerRegVo;
+import org.hibernate.validator.constraints.Length;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -56,18 +59,22 @@ public class ConsumerController {
         }
         // 校验用户名在数据库是否已存在
         String username = consumerRegVo.getUsername();
-        List<Consumer> consumers = consumerService.selectByUsername(username);
-        if (consumers != null && consumers.size() != 0) {
+        Consumer econsumer = consumerService.selectByUsername(username);
+        if (econsumer != null) {
             return R.error(0,"username already exists!");
         }
         // 校验验证码
         String phoneNum = consumerRegVo.getPhoneNum();
         String code = consumerRegVo.getCode();
-        String redisCode = redisTemplate.opsForValue().get("sms_code_" + phoneNum);
+        String redisCode = redisTemplate.opsForValue().get(Consts.SMS_CODE_CACHE_PREFIX + phoneNum);
         if (redisCode != null && redisCode.length() != 0) {
             String c = redisCode.split("_")[0];
             // 踩坑 注意字符串比较用.equals 因为string重写了equals方法，在内存地址不同的情况下比较值，内存地址不同用==的结果是false
             if (code.equals(c)){
+                // 新增用户成功后，删除Redis中的验证码，防止后续新增过程出现问题，重新提交时在验证码有效期间可无需再发送验证码
+                // 但此时若用户重新获取了验证码，而Redis中数据没有更新时，会导致校验验证码失败
+                // 因此选择在校验成功之后马上删除
+                redisTemplate.delete(Consts.SMS_CODE_CACHE_PREFIX+phoneNum);
                 // 转换接收的日期格式
                 DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
                 Date birthDate = new Date();
@@ -78,7 +85,11 @@ public class ConsumerController {
                 }
                 Consumer consumer = new Consumer();
                 consumer.setUsername(username);
-                consumer.setPassword(consumerRegVo.getPassword());
+                // 对密码进行加密保存
+                String password = consumerRegVo.getPassword();
+                BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+                consumer.setPassword(passwordEncoder.encode(password));
+
                 consumer.setSex(new Byte(consumerRegVo.getSex()));
                 consumer.setPhoneNum(phoneNum);
                 consumer.setEmail(consumerRegVo.getEmail());
@@ -205,14 +216,17 @@ public class ConsumerController {
         }
         if(password == null || password.equals("")){
             jsonObject.put(Consts.CODE, 0);
-            jsonObject.put(Consts.MSG, "passwod can not be empty");
+            jsonObject.put(Consts.MSG, "password can not be empty");
             return jsonObject;
         }
-        boolean flag = consumerService.verifyPassword(username, password);
+        Consumer econsumer = consumerService.selectByUsername(username);
+        BCryptPasswordEncoder bcryptPasswordEncoder = new BCryptPasswordEncoder();
+        boolean flag = bcryptPasswordEncoder.matches(password, econsumer.getPassword());
+        //boolean flag = consumerService.verifyPassword(username, password);
         if (flag){
             jsonObject.put(Consts.CODE, 1);
             jsonObject.put(Consts.MSG, "login successfully");
-            jsonObject.put("userMsg", consumerService.selectByUsername(username));
+            jsonObject.put("userMsg", econsumer);
             return jsonObject;
         }
         jsonObject.put(Consts.CODE, 0);
