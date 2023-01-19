@@ -25,6 +25,7 @@ public class SmsSendController {
     private SmsComponent smsComponent;
     @Autowired
     private StringRedisTemplate redisTemplate;
+    // 发送短信
     @PostMapping("/sendcode")
     public R sendCode(HttpServletRequest request){
         String phone = request.getParameter("phone_num").trim();
@@ -40,11 +41,10 @@ public class SmsSendController {
         // 这种方式会带字母，不符合当前的短信内容格式
         // String code = UUID.randomUUID().toString().substring(0,6);
         String code = String.valueOf((int) (Math.random() * 900000 + 100000));
-        // 验证码的再次校验，直接存在Redis
+        // 验证码需要根据用户的提交进行校验，直接存在Redis
         redisTemplate.opsForValue().set("sms_code_"+phone,code+"_"+System.currentTimeMillis(),10, TimeUnit.MINUTES);
 
 
-        System.out.println(code);
         smsComponent.sendSmsCode(phone,code);
         return R.ok();
     }

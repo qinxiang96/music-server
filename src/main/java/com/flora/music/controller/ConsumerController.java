@@ -2,19 +2,22 @@ package com.flora.music.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.flora.music.domain.Consumer;
-import com.flora.music.domain.Singer;
+import com.flora.music.exception.BizCodeEnum;
 import com.flora.music.service.ConsumerService;
 import com.flora.music.utils.Consts;
+import com.flora.music.utils.R;
+import com.flora.music.vo.ConsumerRegVo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import javax.xml.crypto.Data;
+import javax.validation.Valid;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -22,6 +25,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @Author qinxiang
@@ -32,67 +37,63 @@ import java.util.List;
 public class ConsumerController {
     @Autowired
     private ConsumerService consumerService;
+    // 注意这里引用的是StringRedisTemplate,而不是RedisTemplate，否则获取不到值
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     /**
      * 新增用户
-     * @param request
+     * @param consumerRegVo
      * @return
      */
+    //@ResponseBody
     @RequestMapping(value = "/add", method = RequestMethod.POST)
-    public Object addConsumer(HttpServletRequest request){
-        JSONObject jsonObject = new JSONObject();
-        String username = request.getParameter("username").trim();
-        String password = request.getParameter("password").trim();
-        String sex = request.getParameter("sex").trim();
-        String phone_num = request.getParameter("phone_num").trim();
-        String email = request.getParameter("email").trim();
-        String birth = request.getParameter("birth").trim();
-        String introduction = request.getParameter("introduction").trim();
-        String location = request.getParameter("location").trim();
-        String avator = request.getParameter("avator").trim();
-        if (username == null || username.equals("")){
-            jsonObject.put(Consts.CODE, 0);
-            jsonObject.put(Consts.MSG, "username can not be empty!");
-            return jsonObject;
+    public R addConsumer(@Valid ConsumerRegVo consumerRegVo, BindingResult result){
+        // 处理数据格式校验的结果
+        if (result.hasErrors()){
+            Map<String, String> errors = result.getFieldErrors().stream().collect(Collectors.toMap(FieldError::getField, FieldError::getDefaultMessage));
+            return R.error().setData(errors);
         }
         // 校验用户名在数据库是否已存在
+        String username = consumerRegVo.getUsername();
         List<Consumer> consumers = consumerService.selectByUsername(username);
         if (consumers != null && consumers.size() != 0) {
-            jsonObject.put(Consts.CODE, 0);
-            jsonObject.put(Consts.MSG, "username already exists!");
-            return jsonObject;
+            return R.error(0,"username already exists!");
         }
-        if (password == null || password.equals("")){
-            jsonObject.put(Consts.CODE, 0);
-            jsonObject.put(Consts.MSG, "password can not be empty!");
-            return jsonObject;
+        // 校验验证码
+        String phoneNum = consumerRegVo.getPhoneNum();
+        String code = consumerRegVo.getCode();
+        String redisCode = redisTemplate.opsForValue().get("sms_code_" + phoneNum);
+        if (redisCode != null && redisCode.length() != 0) {
+            String c = redisCode.split("_")[0];
+            // 踩坑 注意字符串比较用.equals 因为string重写了equals方法，在内存地址不同的情况下比较值，内存地址不同用==的结果是false
+            if (code.equals(c)){
+                // 转换接收的日期格式
+                DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                Date birthDate = new Date();
+                try {
+                    birthDate = dateFormat.parse(consumerRegVo.getBirth());
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+                Consumer consumer = new Consumer();
+                consumer.setUsername(username);
+                consumer.setPassword(consumerRegVo.getPassword());
+                consumer.setSex(new Byte(consumerRegVo.getSex()));
+                consumer.setPhoneNum(phoneNum);
+                consumer.setEmail(consumerRegVo.getEmail());
+                consumer.setBirth(birthDate);
+                consumer.setIntroduction(consumerRegVo.getIntroduction());
+                consumer.setLocation(consumerRegVo.getLocation());
+                consumer.setAvator(consumerRegVo.getAvator());
+                boolean flag = consumerService.insert(consumer);
+                if (flag) {
+                    return R.ok();
+                }
+                return R.error(BizCodeEnum.UNKNOWN_EXCEPTION.getCode(),BizCodeEnum.UNKNOWN_EXCEPTION.getMsg());
+            }
         }
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        Date birthDate = new Date();
-        try {
-            birthDate = dateFormat.parse(birth);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        Consumer consumer = new Consumer();
-        consumer.setUsername(username);
-        consumer.setPassword(password);
-        consumer.setSex(new Byte(sex));
-        consumer.setPhoneNum(phone_num);
-        consumer.setEmail(email);
-        consumer.setBirth(birthDate);
-        consumer.setIntroduction(introduction);
-        consumer.setLocation(location);
-        consumer.setAvator(avator);
-        boolean flag = consumerService.insert(consumer);
-        if (flag) {
-            jsonObject.put(Consts.CODE, 1);
-            jsonObject.put(Consts.MSG, "save successfully");
-            return jsonObject;
-        }
-        jsonObject.put(Consts.CODE, 0);
-        jsonObject.put(Consts.MSG, "save failed");
-        return jsonObject;
+        return R.error(BizCodeEnum.SMS_CODE_VALID_EXCEPTION.getCode(),BizCodeEnum.SMS_CODE_VALID_EXCEPTION.getMsg());
     }
     /**
      * 修改用户

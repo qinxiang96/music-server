@@ -38,7 +38,7 @@ public class SmsComponent {
 
         try {
             HttpResponse response = HttpUtils.doPost(host, path, method, headers, querys, bodys);
-            System.out.println(response.toString());
+            //System.out.println(response.toString());
             //获取response的body
             System.out.println(EntityUtils.toString(response.getEntity()));
         } catch (Exception e) {
