@@ -4,6 +4,7 @@ import com.flora.music.dao.ConsumerMapper;
 import com.flora.music.domain.Consumer;
 import com.flora.music.service.ConsumerService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -91,6 +92,9 @@ public class ConsumerServiceImpl implements ConsumerService {
      */
     @Override
     public boolean verifyPassword(String username, String password) {
-        return consumerMapper.verifyPassword(username,password)>0;
+        Consumer econsumer = consumerMapper.selectByUsername(username);
+        BCryptPasswordEncoder bcryptPasswordEncoder = new BCryptPasswordEncoder();
+        boolean flag = bcryptPasswordEncoder.matches(password, econsumer.getPassword());
+        return flag;
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
  * @Author qinxiang
  * @Date 2022/12/29-下午10:44
  * 解决跨域问题
+ * 协议、IP、端口号有一个不一致就会存在跨域问题
  */
 @Configuration
 public class WebMvcConfig extends WebMvcConfigurerAdapter{

@@ -6,6 +6,7 @@ import com.flora.music.exception.BizCodeEnum;
 import com.flora.music.service.ConsumerService;
 import com.flora.music.utils.Consts;
 import com.flora.music.utils.R;
+import com.flora.music.vo.ConsumerLoginVo;
 import com.flora.music.vo.ConsumerRegVo;
 import org.hibernate.validator.constraints.Length;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -201,37 +202,29 @@ public class ConsumerController {
     }
     /**
      * 前端用户登录验证
-     * @param request
+     * @param consumerLoginVo
      * @return
      */
     @RequestMapping(value = "/verifyPassword", method = RequestMethod.POST)
-    public Object loginStatus(HttpServletRequest request, HttpSession session){
-        JSONObject jsonObject = new JSONObject();
-        String username = request.getParameter("username");
-        String password = request.getParameter("password");
-        if(username == null || username.equals("")){
-            jsonObject.put(Consts.CODE, 0);
-            jsonObject.put(Consts.MSG, "username can not be empty");
-            return jsonObject;
+    public R loginStatus(@Valid ConsumerLoginVo consumerLoginVo, BindingResult result){
+        // 处理数据格式校验的结果
+        if (result.hasErrors()){
+            Map<String, String> errors = result.getFieldErrors().stream().collect(Collectors.toMap(FieldError::getField, FieldError::getDefaultMessage));
+            return R.error().setData(errors);
         }
-        if(password == null || password.equals("")){
-            jsonObject.put(Consts.CODE, 0);
-            jsonObject.put(Consts.MSG, "password can not be empty");
-            return jsonObject;
-        }
+        // 验证密码
+        String username = consumerLoginVo.getUsername();
+        String password = consumerLoginVo.getPassword();
         Consumer econsumer = consumerService.selectByUsername(username);
         BCryptPasswordEncoder bcryptPasswordEncoder = new BCryptPasswordEncoder();
         boolean flag = bcryptPasswordEncoder.matches(password, econsumer.getPassword());
-        //boolean flag = consumerService.verifyPassword(username, password);
+        // 因为需要拿到返回的对象信息，不用下面这种方式，否则需要查2遍数据库，直接根据用户名查询对象进行验证
+        // boolean flag = consumerService.verifyPassword(username, password);
+        // 处理返回信息
         if (flag){
-            jsonObject.put(Consts.CODE, 1);
-            jsonObject.put(Consts.MSG, "login successfully");
-            jsonObject.put("userMsg", econsumer);
-            return jsonObject;
+            return R.ok().put("userMsg", econsumer);
         }
-        jsonObject.put(Consts.CODE, 0);
-        jsonObject.put(Consts.MSG, "username or password is wrong");
-        return jsonObject;
+        return R.error(BizCodeEnum.USER_EXIST_EXCEPTION.getCode(),BizCodeEnum.USER_EXIST_EXCEPTION.getMsg());
     }
     /**
      * 更新图片
