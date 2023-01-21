@@ -3,17 +3,25 @@ package com.flora.music.service.impl;
 import com.flora.music.dao.SingerMapper;
 import com.flora.music.domain.Singer;
 import com.flora.music.service.SingerService;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.RabbitHandler;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
  * @Author qinxiang
  * @Date 2022/12/30-下午2:27
  */
+@RabbitListener(queues = {"hello-queue"})
 @Service
 public class SingerServiceImpl implements SingerService {
     @Autowired
@@ -106,4 +114,30 @@ public class SingerServiceImpl implements SingerService {
      */
     @Override
     public boolean updatePic(Integer id){return singerMapper.updatePic(id)>0;};
+
+    // @RabbitListener 可以标注在类和方法上，但只能通过Message接收消息
+    // @RabbitHandler 可以标注方法上，配合@RabbitListener(queues = {"hello-queue"})标注在类上，对不同的消息类型标注在不同的方法上进行不同的处理
+    // queues:声明需要监听的所有队列
+//    @RabbitListener(queues = {"hello-queue"})
+//    public void listenMsg(Message msg){
+//        byte[] body = msg.getBody();
+//        String s = new String(body);
+//        System.out.println("监听到的消息内容"+s+"监听到的原消息内容"+body);
+//        监听到的消息内容{"id":null,"name":"xiaopengyou","sex":null,"pic":null,"birth":1674296295163,"location":null,"introduction":null}监听到的原消息内容[B@1b99cec9
+//    }
+    @RabbitHandler
+    public void listenMsg2(Message message, Singer msg, Channel channel){
+        System.out.println("监听到的消息内容"+msg);
+        // 监听到的消息内容Singer(id=null, name=xiaopengyou, sex=null, pic=null, birth=Sat Jan 21 19:35:32 CST 2023, location=null, introduction=null)
+        // Channel内按顺序自增-deliveryTag
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        try {
+            // 签收信息 不批量签收（业务成功，签收）
+            channel.basicAck(deliveryTag,false);
+            // 拒签信息 不批量拒签（业务失败，拒签，信息可被重新处理）
+            // channel.basicNack(deliveryTag,false,true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

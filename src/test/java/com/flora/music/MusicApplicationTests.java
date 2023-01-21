@@ -5,6 +5,7 @@ import com.flora.music.component.SmsComponent;
 import com.flora.music.config.ElasticsearchConfig;
 import com.flora.music.domain.Singer;
 import com.flora.music.utils.HttpUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.action.index.IndexRequest;
@@ -19,6 +20,11 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.core.AmqpAdmin;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,12 +35,17 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @SpringBootTest
 class MusicApplicationTests {
     @Autowired
     private RestHighLevelClient client;
     @Autowired
     private SmsComponent smsComponent;
+    @Autowired
+    private AmqpAdmin amqpAdmin;
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
     // 获取操作elasticsearch的客户端
     @Test
     void contextLoads() {
@@ -123,6 +134,35 @@ class MusicApplicationTests {
         BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         System.out.println(passwordEncoder.encode("zige"));
         System.out.println(passwordEncoder.encode("xiaopengyou"));
+    }
+    // 测试rabbitMQ
+    @Test
+    void mq(){
+        // 创建交换机
+//        DirectExchange directExchange = new DirectExchange("hello-java-exchange", true, false);
+//        amqpAdmin.declareExchange(directExchange);
+//        // 注意：这种占位取值语法 log.info才适用 需要加lombok注解@Slf4j
+//        log.info("exchange[{}]创建成功","hello-java-exchange");
+        // 创建队列
+//        Queue queue = new Queue("hello-queue",true,false,false);
+//        amqpAdmin.declareQueue(queue);
+//        log.info("queue[{}]创建成功","hello-queue");
+        // 创建绑定
+//        Binding binding = new Binding("hello-queue", Binding.DestinationType.QUEUE, "hello-java-exchange", "hello.java", null);
+//        amqpAdmin.declareBinding(binding);
+//        log.info("binding[{}]创建成功","hello.java");
+        // 发送消息
+//        String msg = "message message!";
+//        rabbitTemplate.convertAndSend("hello-java-exchange","hello.java",msg);
+//        log.info("消息[{}]创建成功",msg);
+        // 发送实体类消息
+        Singer singer = new Singer();
+        singer.setName("xiaopengyou");
+        singer.setBirth(new Date());
+        rabbitTemplate.convertAndSend("hello-java-exchange","hello..java",singer);
+        log.info("消息[{}]创建成功",singer);
+        // 此时接收的消息是序列化的，想要转成JSON格式的数据接收，需要进行rabbitmq配置
+
     }
 
 }
