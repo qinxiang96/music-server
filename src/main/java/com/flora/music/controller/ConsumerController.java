@@ -72,8 +72,8 @@ public class ConsumerController {
             String c = redisCode.split("_")[0];
             // 踩坑 注意字符串比较用.equals 因为string重写了equals方法，在内存地址不同的情况下比较值，内存地址不同用==的结果是false
             if (code.equals(c)){
-                // 新增用户成功后，删除Redis中的验证码，防止后续新增过程出现问题，重新提交时在验证码有效期间可无需再发送验证码
-                // 但此时若用户重新获取了验证码，而Redis中数据没有更新时，会导致校验验证码失败
+                // 新增用户成功后，删除Redis中的验证码，防止后续新增过程出现问题，
+                // 如果不删除缓存重新提交时在验证码有效期间可无需再发送验证码，但此时若用户重新获取了验证码，而Redis中数据没有更新时，会导致校验验证码失败
                 // 因此选择在校验成功之后马上删除
                 redisTemplate.delete(Consts.SMS_CODE_CACHE_PREFIX+phoneNum);
                 // 转换接收的日期格式

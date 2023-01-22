@@ -13,4 +13,8 @@ public class Consts {
     public static final String MSG = "msg";
     //redis存储短信验证码前缀
     public static final String SMS_CODE_CACHE_PREFIX = "sms_code_";
+    // 收藏令牌
+    public static final String CONSUMER_COLLECT_TOKEN_PREFIX = "collect_token_";
+    // 返回收藏令牌
+    public static final String CONSUMER_COLLECT_TOKEN = "collectToken";
 }
